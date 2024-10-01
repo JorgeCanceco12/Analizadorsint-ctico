@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analizador Léxico y Sintáctico</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f4f4f4;
+        }
+
+        .container {
+            width: 80%;
+            max-width: 800px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        textarea {
+            width: 100%;
+            height: 150px;
+            margin-bottom: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        button {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px;
+            border: none;
+            border-radius: 4px;
+            background-color: #007BFF;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        .bottom-section {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 20px;
+        }
+
+        .bottom-section table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 0 auto;
+        }
+
+        table, th, td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: center;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+
+        .table-wrapper {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .error-message {
+            color: red;
+            margin-top: 10px;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Analizador Léxico y Sintáctico</h1>
+        
+        <!-- Mostrar mensaje de error si es necesario -->
+        <div id="errorMessage" class="error-message"></div>
+
+        <!-- Formulario de análisis léxico -->
+        <form id="lexicalForm">
+            <textarea id="inputText" placeholder="Inserta el código aquí"></textarea>
+            <button type="button" onclick="analyzeCode()">Analizar</button>
+        </form>
+        
+        <h2>Resultado del Análisis Léxico</h2>
+        <div class="bottom-section">
+            <div class="table-wrapper">
+                <table id="tokenTable">
+                    <tr>
+                        <th>Línea</th>
+                        <th>Tipo de Token</th>
+                        <th>Token</th>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function analyzeCode() {
+            // Diccionarios para clasificar tokens
+            const reservedWords = {
+                'int': 'Palabra reservada', 
+                'main': 'Reservada main'
+            };
+            const symbols = {
+                '(': 'Parentesis de apertura', 
+                ')': 'Parentesis de cierre', 
+                '{': 'Llave de apertura', 
+                '}': 'Llave de cierre', 
+                ';': 'Punto y coma'
+            };
+
+            // Lista de tokens esperados (en orden) para la validación sintáctica
+            const expectedTokens = [
+                ['int', 'Palabra reservada'], 
+                ['main', 'Reservada main'], 
+                ['(', 'Parentesis de apertura'], 
+                [')', 'Parentesis de cierre'], 
+                ['{', 'Llave de apertura'], 
+                ['int', 'Palabra reservada'], 
+                ['x', 'Identificador'], 
+                [';', 'Punto y coma'], 
+                ['}', 'Llave de cierre']
+            ];
+
+            // Obtener el texto ingresado y dividirlo por líneas
+            const inputText = document.getElementById("inputText").value;
+            const lines = inputText.split(/\n/);  // Dividir el texto en líneas
+
+            // Limpiar la tabla y mensajes anteriores
+            document.getElementById("tokenTable").innerHTML = "<tr><th>Línea</th><th>Tipo de Token</th><th>Token</th></tr>";
+            document.getElementById("errorMessage").innerHTML = '';  // Limpiar mensajes de error
+
+            let tokenIndex = 0;  // Para comparar con la lista de tokens esperados
+            let errorMessage = '';  // Almacena los mensajes de error
+            let errorFound = false;  // Bandera para detectar errores
+
+            // Procesar cada línea
+            lines.forEach((line, lineNumber) => {
+                const tokens = line.split(/\s+/);  // Dividir cada línea en tokens
+
+                // Procesar cada token en la línea
+                tokens.forEach(function(token) {
+                    let tokenType = 'Desconocido';
+
+                    // Clasificar el token
+                    if (reservedWords[token]) {
+                        tokenType = reservedWords[token];
+                    } else if (symbols[token]) {
+                        tokenType = symbols[token];
+                    } else if (token === 'x') {
+                        tokenType = 'Identificador';
+                    }
+
+                    // Verificar si el token coincide con el esperado
+                    if (tokenIndex < expectedTokens.length) {
+                        const [expectedToken, expectedType] = expectedTokens[tokenIndex];
+                        if (token !== expectedToken) {
+                            errorMessage += `Error: Se esperaba '${expectedToken}' en la línea ${lineNumber + 1}.<br>`;
+                            errorFound = true;
+                        }
+                        tokenIndex++;
+                    }
+
+                    // Agregar el token a la tabla solo si no hay errores
+                    if (!errorFound) {
+                        const row = document.createElement("tr");
+                        row.innerHTML = `<td>${lineNumber + 1}</td><td>${tokenType}</td><td>${token}</td>`;
+                        document.getElementById("tokenTable").appendChild(row);
+                    }
+                });
+            });
+
+            // Verificar si el código está incompleto
+            if (tokenIndex < expectedTokens.length && !errorFound) {
+                const [expectedToken, ] = expectedTokens[tokenIndex];
+                errorMessage += `Error: Se esperaba '${expectedToken}' pero no se encontró en el código.<br>`;
+                errorFound = true;
+            }
+
+            // Mostrar mensaje de error si hay errores y no generar la tabla
+            if (errorFound) {
+                document.getElementById("errorMessage").innerHTML = errorMessage;
+                document.getElementById("tokenTable").innerHTML = ''; // Limpiar la tabla si hay errores
+            }
+        }
+    </script>
+</body>
+</html>
